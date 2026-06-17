@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useMemo, useState } from "react";
 import { TEAMS, getTeamColor } from "@/lib/teams";
 import { STAGE_POSITION, TournamentStage } from "@/lib/types";
 
@@ -7,150 +8,199 @@ interface Props {
   supportedTeam: string | null;
 }
 
-const STAGES: { key: TournamentStage; label: string; x: number }[] = [
-  { key: "group", label: "Group Stage", x: 8 },
-  { key: "round_of_32", label: "R32", x: 22 },
-  { key: "round_of_16", label: "R16", x: 38 },
-  { key: "quarter_final", label: "QF", x: 54 },
-  { key: "semi_final", label: "SF", x: 70 },
-  { key: "final", label: "Final", x: 84 },
-  { key: "champion", label: "🏆", x: 95 },
+const STAGES: { key: TournamentStage; label: string }[] = [
+  { key: "group", label: "Start" },
+  { key: "round_of_32", label: "R32" },
+  { key: "round_of_16", label: "R16" },
+  { key: "quarter_final", label: "QF" },
+  { key: "semi_final", label: "SF" },
+  { key: "final", label: "Final" },
+  { key: "champion", label: "🏆" },
 ];
 
-const TEAM_ROWS = 48;
-const SVG_HEIGHT = TEAM_ROWS * 20 + 80;
+// Horizontal % position of each racer along the lane, per stage.
+const STAGE_X: Record<TournamentStage, number> = {
+  group: 6,
+  round_of_32: 22,
+  round_of_16: 38,
+  quarter_final: 54,
+  semi_final: 70,
+  final: 84,
+  champion: 94,
+};
+
+// Continuous vertical dashed lines drawn identically on every lane so they
+// line up across rows. Positions match STAGE_X (minus the Start column).
+const laneBg =
+  "repeating-linear-gradient(to right, transparent, transparent calc(22% - 1px), rgba(255,255,255,0.12) 22%, transparent calc(22% + 1px))";
 
 export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
-  const sorted = [...TEAMS].sort((a, b) => {
-    const diff = STAGE_POSITION[b.stage] - STAGE_POSITION[a.stage];
-    if (diff !== 0) return diff;
-    return a.name.localeCompare(b.name);
-  });
+  const [supporters, setSupporters] = useState<Record<string, string[]>>({});
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    fetch("/api/supporters")
+      .then((r) => r.json())
+      .then((d) => setSupporters(d.supporters ?? {}))
+      .catch(() => {});
+  }, []);
+
+  const groups = useMemo(() => [...new Set(TEAMS.map((t) => t.group))].sort(), []);
+
+  const q = search.trim().toLowerCase();
+  const matches = (id: string) =>
+    !q || TEAMS.find((t) => t.id === id)?.name.toLowerCase().includes(q);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="p-4 border-b border-gray-100">
-        <h2 className="text-lg font-bold text-gray-800">Race to the Final</h2>
-        <p className="text-sm text-gray-500">Teams progress as they advance through the tournament</p>
+      <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-gray-800">Race to the Final</h2>
+          <p className="text-sm text-gray-500">
+            Teams advance through the tournament — names show who&apos;s backing them
+          </p>
+        </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search a nation…"
+          className="px-3 py-2 rounded-lg bg-gray-100 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400 w-full sm:w-56"
+        />
       </div>
 
-      <div className="overflow-x-auto">
-        <svg
-          viewBox={`0 0 100 ${SVG_HEIGHT}`}
-          preserveAspectRatio="xMidYMid meet"
-          style={{ width: "100%", minWidth: 600, height: SVG_HEIGHT }}
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Pitch background */}
-          <rect x="0" y="0" width="100" height={SVG_HEIGHT} fill="#2d7a3a" />
-
-          {/* Pitch markings */}
-          <rect x="0.5" y="0.5" width="99" height={SVG_HEIGHT - 1} fill="none" stroke="#4a9e58" strokeWidth="0.3" />
-          <line x1="50" y1="0" x2="50" y2={SVG_HEIGHT} stroke="#4a9e58" strokeWidth="0.3" />
-          {/* Center circle */}
-          <circle cx="50" cy={SVG_HEIGHT / 2} r="8" fill="none" stroke="#4a9e58" strokeWidth="0.3" />
-          {/* Penalty areas */}
-          <rect x="0.5" y={SVG_HEIGHT / 2 - 12} width="12" height="24" fill="none" stroke="#4a9e58" strokeWidth="0.3" />
-          <rect x="87.5" y={SVG_HEIGHT / 2 - 12} width="12" height="24" fill="none" stroke="#4a9e58" strokeWidth="0.3" />
-
-          {/* Stage markers */}
-          {STAGES.map((s) => (
-            <g key={s.key}>
-              <line x1={s.x} y1="5" x2={s.x} y2={SVG_HEIGHT - 5} stroke="rgba(255,255,255,0.15)" strokeWidth="0.4" strokeDasharray="1,1" />
-              <text x={s.x} y="4" textAnchor="middle" fontSize="2.5" fill="rgba(255,255,255,0.7)" fontWeight="bold">
-                {s.label}
-              </text>
-            </g>
-          ))}
-
-          {/* Teams */}
-          {sorted.map((team, i) => {
-            const stageData = STAGES.find((s) => s.key === team.stage) ?? STAGES[0];
-            const y = 12 + i * 20;
-            const color = getTeamColor(team.id);
-            const isSupported = supportedTeam === team.id;
-
-            return (
-              <g
-                key={team.id}
-                onClick={() => onTeamClick(team.id)}
-                style={{ cursor: "pointer" }}
-              >
-                {/* Track lane */}
-                <rect
-                  x="1"
-                  y={y - 7}
-                  width="98"
-                  height="14"
-                  rx="2"
-                  fill={isSupported ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}
-                />
-
-                {/* Progress bar */}
-                <rect
-                  x="1"
-                  y={y - 7}
-                  width={stageData.x - 1}
-                  height="14"
-                  rx="2"
-                  fill={team.eliminated ? "rgba(100,100,100,0.4)" : `${color}99`}
-                />
-
-                {/* Team racer */}
-                <circle
-                  cx={stageData.x}
-                  cy={y}
-                  r={isSupported ? 7 : 5.5}
-                  fill={team.eliminated ? "#666" : color}
-                  stroke={isSupported ? "#FFD700" : "rgba(255,255,255,0.6)"}
-                  strokeWidth={isSupported ? 1.2 : 0.6}
-                />
-
-                {/* Flag emoji */}
-                <text x={stageData.x} y={y + 2} textAnchor="middle" fontSize={isSupported ? 6 : 5} dominantBaseline="middle">
-                  {team.flag}
-                </text>
-
-                {/* Team name label */}
-                <text
-                  x={stageData.x + 8}
-                  y={y + 1}
-                  fontSize="3"
-                  fill={isSupported ? "#FFD700" : "rgba(255,255,255,0.85)"}
-                  fontWeight={isSupported ? "bold" : "normal"}
-                  dominantBaseline="middle"
+      {/* Pitch */}
+      <div className="overflow-x-auto" style={{ background: "#1f7a34" }}>
+        <div style={{ minWidth: 760 }}>
+          {/* Stage header */}
+          <div className="flex sticky top-0 z-10" style={{ background: "#1a6b2d" }}>
+            <div className="w-44 shrink-0 border-r border-white/10" />
+            <div className="flex-1 relative h-9">
+              {STAGES.map((s) => (
+                <span
+                  key={s.key}
+                  className="absolute text-[11px] font-bold uppercase tracking-wider text-white/70 -translate-x-1/2"
+                  style={{ left: `${STAGE_X[s.key]}%`, top: 10 }}
                 >
-                  {team.name}
-                </text>
+                  {s.label}
+                </span>
+              ))}
+            </div>
+          </div>
 
-                {/* Eliminated X */}
-                {team.eliminated && (
-                  <text x={stageData.x} y={y + 1} textAnchor="middle" fontSize="4" fill="rgba(255,80,80,0.9)" dominantBaseline="middle">
-                    ✕
-                  </text>
-                )}
-              </g>
+          {/* Rows grouped by group */}
+          {groups.map((g) => {
+            const teamsInGroup = TEAMS.filter((t) => t.group === g);
+            return (
+              <div key={g}>
+                <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-300 bg-black/15">
+                  Group {g}
+                </div>
+                {teamsInGroup.map((team) => {
+                  const x = STAGE_X[team.stage];
+                  const color = getTeamColor(team.id);
+                  const isSupported = supportedTeam === team.id;
+                  const fans = supporters[team.id] ?? [];
+                  const dim = !matches(team.id);
+
+                  return (
+                    <div
+                      key={team.id}
+                      className="flex items-stretch border-b border-white/5 transition-opacity"
+                      style={{ opacity: dim ? 0.25 : 1 }}
+                    >
+                      {/* Left card */}
+                      <button
+                        onClick={() => onTeamClick(team.id)}
+                        className={`w-44 shrink-0 flex items-center gap-2 px-3 py-3 text-left border-r border-white/10 transition-colors ${
+                          isSupported ? "bg-yellow-400/20" : "hover:bg-white/5"
+                        }`}
+                      >
+                        <span className="text-[10px] font-bold text-white/50 w-5">{team.id.slice(0, 3)}</span>
+                        <span className="text-lg leading-none">{team.flag}</span>
+                        <span
+                          className={`text-sm font-bold truncate ${
+                            isSupported ? "text-yellow-300" : "text-white"
+                          }`}
+                        >
+                          {team.name}
+                        </span>
+                        <span className="ml-auto text-white/40">›</span>
+                      </button>
+
+                      {/* Lane */}
+                      <div
+                        className="flex-1 relative min-h-[64px] cursor-pointer"
+                        style={{ background: laneBg }}
+                        onClick={() => onTeamClick(team.id)}
+                      >
+                        {/* Finish checker */}
+                        <div
+                          className="absolute top-0 bottom-0 w-2"
+                          style={{
+                            right: 0,
+                            backgroundImage:
+                              "repeating-conic-gradient(#fff 0% 25%, #000 0% 50%)",
+                            backgroundSize: "8px 8px",
+                            opacity: 0.6,
+                          }}
+                        />
+
+                        {/* Progress trail */}
+                        <div
+                          className="absolute top-1/2 h-1.5 rounded-full -translate-y-1/2"
+                          style={{
+                            left: 4,
+                            width: `calc(${x}% - 4px)`,
+                            background: team.eliminated ? "rgba(120,120,120,0.5)" : `${color}aa`,
+                          }}
+                        />
+
+                        {/* Racer */}
+                        <div
+                          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
+                          style={{ left: `${x}%` }}
+                        >
+                          {/* Supporter header */}
+                          {fans.length > 0 && (
+                            <div className="mb-1 px-2 py-0.5 rounded-full bg-black/75 text-white text-[10px] font-semibold whitespace-nowrap max-w-[160px] truncate">
+                              {fans.slice(0, 2).join(", ")}
+                              {fans.length > 2 && ` +${fans.length - 2}`}
+                            </div>
+                          )}
+                          <div
+                            className="rounded-full flex items-center justify-center font-bold text-white"
+                            style={{
+                              width: isSupported ? 38 : 32,
+                              height: isSupported ? 38 : 32,
+                              background: team.eliminated ? "#666" : color,
+                              border: isSupported
+                                ? "3px solid #FFD700"
+                                : "2px solid rgba(255,255,255,0.6)",
+                              fontSize: isSupported ? 18 : 15,
+                            }}
+                          >
+                            {team.eliminated ? "✕" : team.flag}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             );
           })}
-
-          {/* Goal post (finish line) */}
-          <rect x="95" y="0" width="0.5" height={SVG_HEIGHT} fill="rgba(255,255,255,0.5)" />
-          <text x="97" y={SVG_HEIGHT / 2} textAnchor="middle" fontSize="5" fill="rgba(255,255,255,0.6)" transform={`rotate(-90, 97, ${SVG_HEIGHT / 2})`}>
-            FINISH
-          </text>
-        </svg>
+        </div>
       </div>
 
-      <div className="p-4 border-t border-gray-100 flex items-center gap-6 text-xs text-gray-500">
+      <div className="p-4 border-t border-gray-100 flex flex-wrap items-center gap-4 text-xs text-gray-500">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-green-500 ring-2 ring-yellow-400" />
-          <span>Your team</span>
+          <span className="inline-block w-3 h-3 rounded-full bg-green-500 ring-2 ring-yellow-400" />
+          Your team
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-gray-400" />
-          <span>Eliminated</span>
+          <span className="inline-block w-3 h-3 rounded-full bg-gray-400" /> Eliminated
         </div>
-        <span>Click any team for details</span>
+        <span>Black labels show who&apos;s supporting each nation · click a team for details</span>
       </div>
     </div>
   );

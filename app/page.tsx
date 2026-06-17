@@ -16,10 +16,15 @@ export default function Home() {
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [showSelector, setShowSelector] = useState(false);
   const [voteData, setVoteData] = useState<VoteData>({ votes: {}, total: 0 });
+  const [fanName, setFanName] = useState("");
+  const [pendingTeam, setPendingTeam] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem("wc2026_support");
     if (saved) setSupportedTeam(saved);
+    const name = localStorage.getItem("wc2026_name");
+    if (name) setFanName(name);
     fetch("/api/votes")
       .then((r) => r.json())
       .then((d) => setVoteData(d))
@@ -27,9 +32,34 @@ export default function Home() {
   }, []);
 
   function selectTeam(id: string) {
+    setShowSelector(false);
+    const name = localStorage.getItem("wc2026_name");
+    if (!name) {
+      // Need a display name before we can list this fan on the race track.
+      setPendingTeam(id);
+      return;
+    }
+    commitSupport(id, name);
+  }
+
+  function commitSupport(id: string, name: string) {
     setSupportedTeam(id);
     localStorage.setItem("wc2026_support", id);
-    setShowSelector(false);
+    fetch("/api/supporters", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, teamId: id }),
+    }).catch(() => {});
+  }
+
+  function submitName() {
+    const name = nameInput.trim().slice(0, 24);
+    if (!name || !pendingTeam) return;
+    localStorage.setItem("wc2026_name", name);
+    setFanName(name);
+    commitSupport(pendingTeam, name);
+    setPendingTeam(null);
+    setNameInput("");
   }
 
   const supported = TEAMS.find((t) => t.id === supportedTeam);
@@ -47,23 +77,30 @@ export default function Home() {
             </div>
           </div>
 
-          <button
-            onClick={() => setShowSelector(!showSelector)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-              supported
-                ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
-                : "bg-green-600 text-white hover:bg-green-700"
-            }`}
-          >
-            {supported ? (
-              <>
-                <span className="text-base">{supported.flag}</span>
-                <span>{supported.name}</span>
-              </>
-            ) : (
-              "Pick your team"
+          <div className="flex items-center gap-2">
+            {fanName && (
+              <span className="hidden sm:inline text-sm text-gray-500">
+                Hi, <span className="font-semibold text-gray-700">{fanName}</span>
+              </span>
             )}
-          </button>
+            <button
+              onClick={() => setShowSelector(!showSelector)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+                supported
+                  ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+                  : "bg-green-600 text-white hover:bg-green-700"
+              }`}
+            >
+              {supported ? (
+                <>
+                  <span className="text-base">{supported.flag}</span>
+                  <span>{supported.name}</span>
+                </>
+              ) : (
+                "Pick your team"
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -132,6 +169,54 @@ export default function Home() {
           onClose={() => setSelectedTeam(null)}
           voteData={voteData}
         />
+      )}
+
+      {/* Name prompt — lightweight identity, no login */}
+      {pendingTeam && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setPendingTeam(null)}
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-3xl mb-2">
+              {TEAMS.find((t) => t.id === pendingTeam)?.flag}
+            </div>
+            <h2 className="text-lg font-bold text-gray-800 mb-1">
+              Back {TEAMS.find((t) => t.id === pendingTeam)?.name}
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Add your name so other fans can see you supporting them on the race track.
+            </p>
+            <input
+              autoFocus
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitName()}
+              placeholder="Your name"
+              maxLength={24}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 mb-3"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPendingTeam(null)}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-semibold hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitName}
+                disabled={!nameInput.trim()}
+                className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50"
+              >
+                Support team
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
