@@ -1,5 +1,8 @@
-import { kv } from "@vercel/kv";
+import { redis } from "@/lib/redis";
 import { NextRequest, NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 // Hash: field = supporter name, value = teamId they back.
 // Using the name as the field means re-picking a team simply overwrites.
@@ -15,8 +18,9 @@ function group(map: Record<string, string>): Record<string, string[]> {
 
 export async function GET() {
   try {
-    const map = (await kv.hgetall(KEY)) as Record<string, string> | null;
-    return NextResponse.json({ supporters: group(map ?? {}) });
+    if (!redis) return NextResponse.json({ supporters: {} });
+    const map = await redis.hgetall(KEY);
+    return NextResponse.json({ supporters: group(map) });
   } catch {
     return NextResponse.json({ supporters: {} });
   }
@@ -29,9 +33,10 @@ export async function POST(req: NextRequest) {
     if (!clean || !teamId || typeof teamId !== "string") {
       return NextResponse.json({ error: "name and teamId required" }, { status: 400 });
     }
-    await kv.hset(KEY, { [clean]: teamId });
-    const map = (await kv.hgetall(KEY)) as Record<string, string>;
-    return NextResponse.json({ supporters: group(map ?? {}) });
+    if (!redis) return NextResponse.json({ error: "Storage not configured" }, { status: 500 });
+    await redis.hset(KEY, clean, teamId);
+    const map = await redis.hgetall(KEY);
+    return NextResponse.json({ supporters: group(map) });
   } catch {
     return NextResponse.json({ error: "Failed to save supporter" }, { status: 500 });
   }

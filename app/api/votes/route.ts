@@ -1,14 +1,20 @@
-import { kv } from "@vercel/kv";
+import { redis } from "@/lib/redis";
 import { NextRequest, NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const VOTES_KEY = "wc2026:votes";
 
+function total(map: Record<string, string>): number {
+  return Object.values(map).reduce((s, v) => s + Number(v), 0);
+}
+
 export async function GET() {
   try {
-    const votes = (await kv.hgetall(VOTES_KEY)) as Record<string, number> | null;
-    const data = votes ?? {};
-    const total = Object.values(data).reduce((s, v) => s + Number(v), 0);
-    return NextResponse.json({ votes: data, total });
+    if (!redis) return NextResponse.json({ votes: {}, total: 0 });
+    const votes = await redis.hgetall(VOTES_KEY);
+    return NextResponse.json({ votes, total: total(votes) });
   } catch {
     return NextResponse.json({ votes: {}, total: 0 });
   }
@@ -20,10 +26,10 @@ export async function POST(req: NextRequest) {
     if (!teamId || typeof teamId !== "string") {
       return NextResponse.json({ error: "Invalid teamId" }, { status: 400 });
     }
-    await kv.hincrby(VOTES_KEY, teamId, 1);
-    const votes = (await kv.hgetall(VOTES_KEY)) as Record<string, number>;
-    const total = Object.values(votes).reduce((s, v) => s + Number(v), 0);
-    return NextResponse.json({ votes, total });
+    if (!redis) return NextResponse.json({ error: "Storage not configured" }, { status: 500 });
+    await redis.hincrby(VOTES_KEY, teamId, 1);
+    const votes = await redis.hgetall(VOTES_KEY);
+    return NextResponse.json({ votes, total: total(votes) });
   } catch {
     return NextResponse.json({ error: "Failed to record vote" }, { status: 500 });
   }
