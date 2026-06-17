@@ -69,7 +69,7 @@ export default function TeamDetail({ teamId, onClose, voteData }: Props) {
 
           {/* Vote stat */}
           <div className="bg-white/10 rounded-xl p-3">
-            <p className="text-xs opacity-70 mb-1">Community pick to win</p>
+            <p className="text-xs opacity-70 mb-1">Fans backing them to survive</p>
             <div className="flex items-center gap-3">
               <div className="flex-1 h-2 bg-white/20 rounded-full overflow-hidden">
                 <div
@@ -79,7 +79,9 @@ export default function TeamDetail({ teamId, onClose, voteData }: Props) {
               </div>
               <span className="text-lg font-black">{votePct.toFixed(1)}%</span>
             </div>
-            <p className="text-xs opacity-60 mt-1">{voteCount.toLocaleString()} votes</p>
+            <p className="text-xs opacity-60 mt-1">
+              {voteCount.toLocaleString()} fans don&apos;t want to see them eliminated
+            </p>
           </div>
         </div>
 
