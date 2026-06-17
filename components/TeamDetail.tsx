@@ -12,6 +12,7 @@ interface Props {
 export default function TeamDetail({ teamId, onClose, voteData }: Props) {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fans, setFans] = useState<string[]>([]);
 
   const team = TEAMS.find((t) => t.id === teamId);
   const color = getTeamColor(teamId);
@@ -24,6 +25,11 @@ export default function TeamDetail({ teamId, onClose, voteData }: Props) {
       .then((d) => setFixtures(d.matches ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    fetch("/api/supporters")
+      .then((r) => r.json())
+      .then((d) => setFans(d.supporters?.[teamId] ?? []))
+      .catch(() => {});
   }, [teamId]);
 
   if (!team) return null;
@@ -83,6 +89,30 @@ export default function TeamDetail({ teamId, onClose, voteData }: Props) {
               {voteCount.toLocaleString()} fans don&apos;t want to see them eliminated
             </p>
           </div>
+        </div>
+
+        {/* Supporters */}
+        <div className="px-6 pt-6">
+          <h3 className="font-bold text-gray-800 mb-3">
+            Supporters{fans.length > 0 && ` (${fans.length})`}
+          </h3>
+          {fans.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              No one&apos;s backing them yet — pick this team to be the first.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {fans.map((name) => (
+                <span
+                  key={name}
+                  className="text-xs font-medium px-2.5 py-1 rounded-full"
+                  style={{ background: `${color}1a`, color }}
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Fixtures */}
