@@ -107,6 +107,24 @@ export function getStarPlayer(id: string): string {
   return STAR_PLAYERS[id] ?? "—";
 }
 
+// ISO codes for flag images (flagcdn.com). Renders flags reliably on all
+// platforms, including Windows where flag emoji aren't supported.
+export const COUNTRY_ISO: Record<string, string> = {
+  USA: "us", PAN: "pa", BOL: "bo", MAR: "ma", ARG: "ar", CAN: "ca",
+  CHI: "cl", ALB: "al", MEX: "mx", SEN: "sn", ECU: "ec", NZL: "nz",
+  ESP: "es", BRA: "br", JPN: "jp", CMR: "cm", FRA: "fr", EGY: "eg",
+  COL: "co", MKD: "mk", ENG: "gb-eng", NED: "nl", TUN: "tn", CHN: "cn",
+  GER: "de", POR: "pt", CRC: "cr", AUS: "au", URU: "uy", KOR: "kr",
+  IRQ: "iq", NGA: "ng", ITA: "it", CRO: "hr", VEN: "ve", SUI: "ch",
+  BEL: "be", IRN: "ir", PAR: "py", THA: "th", POR2: "pt", DEN: "dk",
+  SRB: "rs", GHA: "gh", TUR: "tr", AUT: "at", UKR: "ua", CIV: "ci",
+};
+
+export function flagUrl(id: string): string {
+  const iso = COUNTRY_ISO[id];
+  return iso ? `https://flagcdn.com/w80/${iso}.png` : "";
+}
+
 export function playerInitials(id: string): string {
   const name = STAR_PLAYERS[id];
   if (!name) return id.slice(0, 2);

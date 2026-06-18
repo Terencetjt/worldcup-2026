@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { TEAMS, getTeamColor, getStarPlayer, playerInitials } from "@/lib/teams";
+import { TEAMS, getTeamColor, getStarPlayer } from "@/lib/teams";
 import { TournamentStage } from "@/lib/types";
+import PlayerRacer from "./PlayerRacer";
 
 interface Props {
   onTeamClick: (id: string) => void;
@@ -216,19 +217,20 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
                               </div>
                             )}
                             <div
-                              className="rounded-full flex items-center justify-center font-black text-white shrink-0"
-                              style={{
-                                width: size,
-                                height: size,
-                                background: team.eliminated ? "#666" : color,
-                                border: isSupported
-                                  ? "3px solid #FFD700"
-                                  : "2px solid rgba(255,255,255,0.7)",
-                                fontSize: Math.max(11, size * 0.32),
-                              }}
+                              className="shrink-0"
                               title={`${player} · ${voteCount(team.id)} votes`}
+                              style={{
+                                filter: isSupported
+                                  ? "drop-shadow(0 0 4px #FFD700)"
+                                  : "drop-shadow(0 1px 2px rgba(0,0,0,0.4))",
+                              }}
                             >
-                              {team.eliminated ? "✕" : playerInitials(team.id)}
+                              <PlayerRacer
+                                teamId={team.id}
+                                size={size}
+                                eliminated={team.eliminated}
+                                supported={isSupported}
+                              />
                             </div>
                             <span className="mt-1 text-[10px] font-semibold text-white/90 whitespace-nowrap max-w-[140px] truncate">
                               {player}
