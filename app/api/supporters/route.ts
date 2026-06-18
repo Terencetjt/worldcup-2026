@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 // Hash: field = supporter name, value = teamId they back.
 // Using the name as the field means re-picking a team simply overwrites.
 const KEY = "wc2026:supporters";
+const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
 
 function group(map: Record<string, string>): Record<string, string[]> {
   const out: Record<string, string[]> = {};
@@ -18,11 +19,11 @@ function group(map: Record<string, string>): Record<string, string[]> {
 
 export async function GET() {
   try {
-    if (!redis) return NextResponse.json({ supporters: {} });
+    if (!redis) return NextResponse.json({ supporters: {} }, { headers: NO_STORE });
     const map = await redis.hgetall(KEY);
-    return NextResponse.json({ supporters: group(map) });
+    return NextResponse.json({ supporters: group(map) }, { headers: NO_STORE });
   } catch {
-    return NextResponse.json({ supporters: {} });
+    return NextResponse.json({ supporters: {} }, { headers: NO_STORE });
   }
 }
 

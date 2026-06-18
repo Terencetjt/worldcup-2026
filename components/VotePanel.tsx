@@ -17,10 +17,13 @@ export default function VotePanel({ onTeamClick }: Props) {
     const saved = localStorage.getItem("wc2026_vote");
     if (saved) setMyVote(saved);
     fetchVotes();
+    // Poll so everyone sees each other's votes live, without refreshing.
+    const id = setInterval(fetchVotes, 8000);
+    return () => clearInterval(id);
   }, []);
 
   async function fetchVotes() {
-    const res = await fetch("/api/votes");
+    const res = await fetch("/api/votes", { cache: "no-store" });
     if (res.ok) setVoteData(await res.json());
   }
 

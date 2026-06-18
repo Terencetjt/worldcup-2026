@@ -42,14 +42,20 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetch("/api/supporters")
-      .then((r) => r.json())
-      .then((d) => setSupporters(d.supporters ?? {}))
-      .catch(() => {});
-    fetch("/api/votes")
-      .then((r) => r.json())
-      .then((d) => setVotes(d.votes ?? {}))
-      .catch(() => {});
+    const load = () => {
+      fetch("/api/supporters", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => setSupporters(d.supporters ?? {}))
+        .catch(() => {});
+      fetch("/api/votes", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => setVotes(d.votes ?? {}))
+        .catch(() => {});
+    };
+    load();
+    // Keep the track in sync with everyone else's votes.
+    const id = setInterval(load, 8000);
+    return () => clearInterval(id);
   }, []);
 
   const voteCount = (id: string) => Number(votes[id]) || 0;

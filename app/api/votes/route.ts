@@ -5,6 +5,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const VOTES_KEY = "wc2026:votes";
+const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
 
 function total(map: Record<string, string>): number {
   return Object.values(map).reduce((s, v) => s + Number(v), 0);
@@ -12,11 +13,11 @@ function total(map: Record<string, string>): number {
 
 export async function GET() {
   try {
-    if (!redis) return NextResponse.json({ votes: {}, total: 0 });
+    if (!redis) return NextResponse.json({ votes: {}, total: 0 }, { headers: NO_STORE });
     const votes = await redis.hgetall(VOTES_KEY);
-    return NextResponse.json({ votes, total: total(votes) });
+    return NextResponse.json({ votes, total: total(votes) }, { headers: NO_STORE });
   } catch {
-    return NextResponse.json({ votes: {}, total: 0 });
+    return NextResponse.json({ votes: {}, total: 0 }, { headers: NO_STORE });
   }
 }
 
