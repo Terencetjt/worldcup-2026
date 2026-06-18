@@ -51,12 +51,21 @@ export default function Fixtures({ onTeamClick }: Props) {
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = fixtures.filter((f) => {
-    if (filter === "upcoming") return f.status === "SCHEDULED";
-    if (filter === "live") return f.status === "LIVE" || f.status === "IN_PLAY" || f.status === "PAUSED";
-    if (filter === "finished") return f.status === "FINISHED";
-    return true;
-  });
+  const now = Date.now();
+  const filtered = fixtures
+    .filter((f) => {
+      const isFuture = new Date(f.utcDate).getTime() >= now;
+      if (filter === "upcoming") return f.status === "SCHEDULED" && isFuture;
+      if (filter === "live") return f.status === "LIVE" || f.status === "IN_PLAY" || f.status === "PAUSED";
+      if (filter === "finished") return f.status === "FINISHED";
+      return true;
+    })
+    .sort((a, b) => {
+      const ta = new Date(a.utcDate).getTime();
+      const tb = new Date(b.utcDate).getTime();
+      // Finished matches read best most-recent-first; everything else soonest-first.
+      return filter === "finished" ? tb - ta : ta - tb;
+    });
 
   const grouped = filtered.reduce<Record<string, Fixture[]>>((acc, f) => {
     const key = formatDate(f.utcDate);
