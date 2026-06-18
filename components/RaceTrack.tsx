@@ -30,9 +30,10 @@ const STAGE_X: Record<TournamentStage, number> = {
   champion: 94,
 };
 
-// Player avatar diameter (px) scales between these bounds by vote count.
-const MIN_SIZE = 30;
-const MAX_SIZE = 68;
+// Player figure width (px) scales between these bounds by vote count.
+// Wide range so vote differences are clearly visible.
+const MIN_SIZE = 24;
+const MAX_SIZE = 92;
 
 const laneBg =
   "repeating-linear-gradient(to right, transparent, transparent calc(22% - 1px), rgba(255,255,255,0.12) 22%, transparent calc(22% + 1px))";
@@ -176,7 +177,7 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
 
                         {/* Lane */}
                         <div
-                          className="flex-1 relative min-h-[80px] cursor-pointer"
+                          className="flex-1 relative min-h-[140px] cursor-pointer"
                           style={{ background: laneBg }}
                           onClick={() => onTeamClick(team.id)}
                         >
