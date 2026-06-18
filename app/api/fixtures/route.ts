@@ -11,9 +11,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "API token not configured" }, { status: 500 });
   }
 
-  const url = teamTla
-    ? `${FOOTBALL_API}/competitions/WC/matches?status=SCHEDULED,LIVE,IN_PLAY,PAUSED,FINISHED`
-    : `${FOOTBALL_API}/competitions/WC/matches?status=SCHEDULED,LIVE,IN_PLAY,PAUSED,FINISHED`;
+  // Fetch every match regardless of status, then filter client-side.
+  const url = `${FOOTBALL_API}/competitions/WC/matches`;
 
   const res = await fetch(url, {
     headers: { "X-Auth-Token": token },

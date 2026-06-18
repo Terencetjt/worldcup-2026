@@ -39,7 +39,16 @@ export const STAGE_LABEL: Record<TournamentStage, string> = {
 export interface Fixture {
   id: number;
   utcDate: string;
-  status: "SCHEDULED" | "LIVE" | "IN_PLAY" | "PAUSED" | "FINISHED" | "CANCELLED";
+  status:
+    | "SCHEDULED"
+    | "TIMED"
+    | "LIVE"
+    | "IN_PLAY"
+    | "PAUSED"
+    | "FINISHED"
+    | "POSTPONED"
+    | "SUSPENDED"
+    | "CANCELLED";
   stage: string;
   group: string | null;
   homeTeam: { name: string; shortName: string; tla: string; crest: string };

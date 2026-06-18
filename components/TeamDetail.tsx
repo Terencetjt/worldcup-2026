@@ -183,7 +183,7 @@ export default function TeamDetail({ teamId, onClose, voteData }: Props) {
                           </span>
                         ) : (
                           <span className="text-xs text-gray-500 bg-gray-200 rounded-full px-2 py-0.5">
-                            {m.status === "SCHEDULED"
+                            {m.status === "SCHEDULED" || m.status === "TIMED"
                               ? new Date(m.utcDate).toLocaleTimeString("en-GB", {
                                   hour: "2-digit",
                                   minute: "2-digit",

@@ -8,21 +8,29 @@ interface Props {
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED: "Upcoming",
+  TIMED: "Upcoming",
   LIVE: "LIVE",
   IN_PLAY: "LIVE",
   PAUSED: "HT",
   FINISHED: "FT",
+  POSTPONED: "Postponed",
+  SUSPENDED: "Suspended",
   CANCELLED: "Cancelled",
 };
 
 const STATUS_COLOR: Record<string, string> = {
   SCHEDULED: "bg-gray-100 text-gray-600",
+  TIMED: "bg-gray-100 text-gray-600",
   LIVE: "bg-red-500 text-white animate-pulse",
   IN_PLAY: "bg-red-500 text-white animate-pulse",
   PAUSED: "bg-amber-400 text-white",
   FINISHED: "bg-gray-200 text-gray-600",
+  POSTPONED: "bg-amber-100 text-amber-700",
+  SUSPENDED: "bg-amber-100 text-amber-700",
   CANCELLED: "bg-gray-200 text-gray-400",
 };
+
+const UPCOMING = new Set(["SCHEDULED", "TIMED"]);
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -55,7 +63,7 @@ export default function Fixtures({ onTeamClick }: Props) {
   const filtered = fixtures
     .filter((f) => {
       const isFuture = new Date(f.utcDate).getTime() >= now;
-      if (filter === "upcoming") return f.status === "SCHEDULED" && isFuture;
+      if (filter === "upcoming") return UPCOMING.has(f.status) && isFuture;
       if (filter === "live") return f.status === "LIVE" || f.status === "IN_PLAY" || f.status === "PAUSED";
       if (filter === "finished") return f.status === "FINISHED";
       return true;
