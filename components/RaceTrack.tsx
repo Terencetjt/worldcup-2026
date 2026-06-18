@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { TEAMS, getTeamColor } from "@/lib/teams";
-import { STAGE_POSITION, TournamentStage } from "@/lib/types";
+import { TEAMS, getTeamColor, getStarPlayer, playerInitials } from "@/lib/teams";
+import { TournamentStage } from "@/lib/types";
 
 interface Props {
   onTeamClick: (id: string) => void;
@@ -29,13 +29,16 @@ const STAGE_X: Record<TournamentStage, number> = {
   champion: 94,
 };
 
-// Continuous vertical dashed lines drawn identically on every lane so they
-// line up across rows. Positions match STAGE_X (minus the Start column).
+// Player avatar diameter (px) scales between these bounds by vote count.
+const MIN_SIZE = 30;
+const MAX_SIZE = 68;
+
 const laneBg =
   "repeating-linear-gradient(to right, transparent, transparent calc(22% - 1px), rgba(255,255,255,0.12) 22%, transparent calc(22% + 1px))";
 
 export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
   const [supporters, setSupporters] = useState<Record<string, string[]>>({});
+  const [votes, setVotes] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -43,9 +46,32 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
       .then((r) => r.json())
       .then((d) => setSupporters(d.supporters ?? {}))
       .catch(() => {});
+    fetch("/api/votes")
+      .then((r) => r.json())
+      .then((d) => setVotes(d.votes ?? {}))
+      .catch(() => {});
   }, []);
 
-  const groups = useMemo(() => [...new Set(TEAMS.map((t) => t.group))].sort(), []);
+  const voteCount = (id: string) => Number(votes[id]) || 0;
+
+  // Only nations with at least one vote appear on the track.
+  const votedTeams = useMemo(
+    () => TEAMS.filter((t) => voteCount(t.id) > 0),
+    [votes] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const maxVotes = useMemo(
+    () => Math.max(1, ...votedTeams.map((t) => voteCount(t.id))),
+    [votedTeams] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const sizeFor = (id: string) =>
+    Math.round(MIN_SIZE + (voteCount(id) / maxVotes) * (MAX_SIZE - MIN_SIZE));
+
+  const groups = useMemo(
+    () => [...new Set(votedTeams.map((t) => t.group))].sort(),
+    [votedTeams]
+  );
 
   const q = search.trim().toLowerCase();
   const matches = (id: string) =>
@@ -57,7 +83,7 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
         <div>
           <h2 className="text-lg font-bold text-gray-800">Race to the Final</h2>
           <p className="text-sm text-gray-500">
-            Teams advance through the tournament — names show who&apos;s backing them
+            Each nation runs as its star player — bigger means more votes
           </p>
         </div>
         <input
@@ -87,108 +113,129 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
             </div>
           </div>
 
-          {/* Rows grouped by group */}
-          {groups.map((g) => {
-            const teamsInGroup = TEAMS.filter((t) => t.group === g);
-            return (
-              <div key={g}>
-                <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-300 bg-black/15">
-                  Group {g}
-                </div>
-                {teamsInGroup.map((team) => {
-                  const x = STAGE_X[team.stage];
-                  const color = getTeamColor(team.id);
-                  const isSupported = supportedTeam === team.id;
-                  const fans = supporters[team.id] ?? [];
-                  const dim = !matches(team.id);
+          {votedTeams.length === 0 ? (
+            <div className="py-16 text-center text-white/70 text-sm">
+              No votes yet — nations appear here once fans start voting.
+            </div>
+          ) : (
+            groups.map((g) => {
+              const teamsInGroup = votedTeams
+                .filter((t) => t.group === g)
+                .sort((a, b) => voteCount(b.id) - voteCount(a.id));
+              return (
+                <div key={g}>
+                  <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-300 bg-black/15">
+                    Group {g}
+                  </div>
+                  {teamsInGroup.map((team) => {
+                    const x = STAGE_X[team.stage];
+                    const color = getTeamColor(team.id);
+                    const isSupported = supportedTeam === team.id;
+                    const fans = supporters[team.id] ?? [];
+                    const dim = !matches(team.id);
+                    const size = sizeFor(team.id);
+                    const player = getStarPlayer(team.id);
 
-                  return (
-                    <div
-                      key={team.id}
-                      className="flex items-stretch border-b border-white/5 transition-opacity"
-                      style={{ opacity: dim ? 0.25 : 1 }}
-                    >
-                      {/* Left card */}
-                      <button
-                        onClick={() => onTeamClick(team.id)}
-                        className={`w-44 shrink-0 flex items-center gap-2 px-3 py-3 text-left border-r border-white/10 transition-colors ${
-                          isSupported ? "bg-yellow-400/20" : "hover:bg-white/5"
-                        }`}
+                    return (
+                      <div
+                        key={team.id}
+                        className="flex items-stretch border-b border-white/5 transition-opacity"
+                        style={{ opacity: dim ? 0.25 : 1 }}
                       >
-                        <span className="text-[10px] font-bold text-white/50 w-5">{team.id.slice(0, 3)}</span>
-                        <span className="text-lg leading-none">{team.flag}</span>
-                        <span
-                          className={`text-sm font-bold truncate ${
-                            isSupported ? "text-yellow-300" : "text-white"
+                        {/* Left card */}
+                        <button
+                          onClick={() => onTeamClick(team.id)}
+                          className={`w-44 shrink-0 flex items-center gap-2 px-3 py-3 text-left border-r border-white/10 transition-colors ${
+                            isSupported ? "bg-yellow-400/20" : "hover:bg-white/5"
                           }`}
                         >
-                          {team.name}
-                        </span>
-                        <span className="ml-auto text-white/40">›</span>
-                      </button>
+                          <span className="text-lg leading-none">{team.flag}</span>
+                          <span className="min-w-0">
+                            <span
+                              className={`block text-sm font-bold truncate ${
+                                isSupported ? "text-yellow-300" : "text-white"
+                              }`}
+                            >
+                              {team.name}
+                            </span>
+                            <span className="block text-[10px] text-white/50 truncate">
+                              {player}
+                            </span>
+                          </span>
+                          <span className="ml-auto text-[10px] font-bold text-white/70 whitespace-nowrap">
+                            {voteCount(team.id)}
+                          </span>
+                        </button>
 
-                      {/* Lane */}
-                      <div
-                        className="flex-1 relative min-h-[64px] cursor-pointer"
-                        style={{ background: laneBg }}
-                        onClick={() => onTeamClick(team.id)}
-                      >
-                        {/* Finish checker */}
+                        {/* Lane */}
                         <div
-                          className="absolute top-0 bottom-0 w-2"
-                          style={{
-                            right: 0,
-                            backgroundImage:
-                              "repeating-conic-gradient(#fff 0% 25%, #000 0% 50%)",
-                            backgroundSize: "8px 8px",
-                            opacity: 0.6,
-                          }}
-                        />
-
-                        {/* Progress trail */}
-                        <div
-                          className="absolute top-1/2 h-1.5 rounded-full -translate-y-1/2"
-                          style={{
-                            left: 4,
-                            width: `calc(${x}% - 4px)`,
-                            background: team.eliminated ? "rgba(120,120,120,0.5)" : `${color}aa`,
-                          }}
-                        />
-
-                        {/* Racer */}
-                        <div
-                          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
-                          style={{ left: `${x}%` }}
+                          className="flex-1 relative min-h-[80px] cursor-pointer"
+                          style={{ background: laneBg }}
+                          onClick={() => onTeamClick(team.id)}
                         >
-                          {/* Supporter header */}
-                          {fans.length > 0 && (
-                            <div className="mb-1 px-2 py-0.5 rounded-full bg-black/75 text-white text-[10px] font-semibold whitespace-nowrap max-w-[160px] truncate">
-                              {fans.slice(0, 2).join(", ")}
-                              {fans.length > 2 && ` +${fans.length - 2}`}
-                            </div>
-                          )}
+                          {/* Finish checker */}
                           <div
-                            className="rounded-full flex items-center justify-center font-bold text-white"
+                            className="absolute top-0 bottom-0 w-2"
                             style={{
-                              width: isSupported ? 38 : 32,
-                              height: isSupported ? 38 : 32,
-                              background: team.eliminated ? "#666" : color,
-                              border: isSupported
-                                ? "3px solid #FFD700"
-                                : "2px solid rgba(255,255,255,0.6)",
-                              fontSize: isSupported ? 18 : 15,
+                              right: 0,
+                              backgroundImage:
+                                "repeating-conic-gradient(#fff 0% 25%, #000 0% 50%)",
+                              backgroundSize: "8px 8px",
+                              opacity: 0.6,
                             }}
+                          />
+
+                          {/* Progress trail */}
+                          <div
+                            className="absolute top-1/2 h-1.5 rounded-full -translate-y-1/2"
+                            style={{
+                              left: 4,
+                              width: `calc(${x}% - 4px)`,
+                              background: team.eliminated
+                                ? "rgba(120,120,120,0.5)"
+                                : `${color}aa`,
+                            }}
+                          />
+
+                          {/* Racer = star player, sized by votes */}
+                          <div
+                            className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
+                            style={{ left: `${x}%` }}
                           >
-                            {team.eliminated ? "✕" : team.flag}
+                            {/* Supporter header */}
+                            {fans.length > 0 && (
+                              <div className="mb-1 px-2 py-0.5 rounded-full bg-black/75 text-white text-[10px] font-semibold whitespace-nowrap max-w-[160px] truncate">
+                                {fans.slice(0, 2).join(", ")}
+                                {fans.length > 2 && ` +${fans.length - 2}`}
+                              </div>
+                            )}
+                            <div
+                              className="rounded-full flex items-center justify-center font-black text-white shrink-0"
+                              style={{
+                                width: size,
+                                height: size,
+                                background: team.eliminated ? "#666" : color,
+                                border: isSupported
+                                  ? "3px solid #FFD700"
+                                  : "2px solid rgba(255,255,255,0.7)",
+                                fontSize: Math.max(11, size * 0.32),
+                              }}
+                              title={`${player} · ${voteCount(team.id)} votes`}
+                            >
+                              {team.eliminated ? "✕" : playerInitials(team.id)}
+                            </div>
+                            <span className="mt-1 text-[10px] font-semibold text-white/90 whitespace-nowrap max-w-[140px] truncate">
+                              {player}
+                            </span>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+                    );
+                  })}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -200,7 +247,7 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-full bg-gray-400" /> Eliminated
         </div>
-        <span>Black labels show who&apos;s supporting each nation · click a team for details</span>
+        <span>Bigger player = more votes · only voted nations shown · click for details</span>
       </div>
     </div>
   );

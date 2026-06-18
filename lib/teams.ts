@@ -82,3 +82,36 @@ export const TEAM_COLORS: Record<string, string> = {
 export function getTeamColor(id: string): string {
   return TEAM_COLORS[id] ?? TEAM_COLORS.default;
 }
+
+// Star player representing each nation on the race track.
+export const STAR_PLAYERS: Record<string, string> = {
+  USA: "Christian Pulisic", PAN: "Adalberto Carrasquilla", BOL: "Marcelo Martins",
+  MAR: "Achraf Hakimi", ARG: "Lionel Messi", CAN: "Alphonso Davies",
+  CHI: "Alexis Sánchez", ALB: "Armando Broja", MEX: "Santiago Giménez",
+  SEN: "Sadio Mané", ECU: "Moisés Caicedo", NZL: "Chris Wood",
+  ESP: "Lamine Yamal", BRA: "Vinícius Jr.", JPN: "Takefusa Kubo",
+  CMR: "André Onana", FRA: "Kylian Mbappé", EGY: "Mohamed Salah",
+  COL: "Luis Díaz", MKD: "Eljif Elmas", ENG: "Jude Bellingham",
+  NED: "Virgil van Dijk", TUN: "Hannibal Mejbri", CHN: "Wu Lei",
+  GER: "Jamal Musiala", POR: "Cristiano Ronaldo", CRC: "Keylor Navas",
+  AUS: "Mathew Ryan", URU: "Federico Valverde", KOR: "Son Heung-min",
+  IRQ: "Aymen Hussein", NGA: "Victor Osimhen", ITA: "Federico Chiesa",
+  CRO: "Luka Modrić", VEN: "Salomón Rondón", SUI: "Granit Xhaka",
+  BEL: "Kevin De Bruyne", IRN: "Mehdi Taremi", PAR: "Miguel Almirón",
+  THA: "Chanathip Songkrasin", POR2: "Bruno Fernandes", DEN: "Christian Eriksen",
+  SRB: "Dušan Vlahović", GHA: "Mohammed Kudus", TUR: "Hakan Çalhanoğlu",
+  AUT: "David Alaba", UKR: "Mykhailo Mudryk", CIV: "Sébastien Haller",
+};
+
+export function getStarPlayer(id: string): string {
+  return STAR_PLAYERS[id] ?? "—";
+}
+
+export function playerInitials(id: string): string {
+  const name = STAR_PLAYERS[id];
+  if (!name) return id.slice(0, 2);
+  const parts = name.split(" ");
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (first + last).toUpperCase();
+}
