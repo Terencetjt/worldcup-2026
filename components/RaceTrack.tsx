@@ -31,9 +31,10 @@ const STAGE_X: Record<TournamentStage, number> = {
 };
 
 // Player figure width (px) scales between these bounds by vote count.
-// Wide range so vote differences are clearly visible.
-const MIN_SIZE = 24;
-const MAX_SIZE = 92;
+// A power curve (>1) makes the leader dominate while trailing teams stay small.
+const MIN_SIZE = 22;
+const MAX_SIZE = 104;
+const CURVE = 1.7;
 
 const laneBg =
   "repeating-linear-gradient(to right, transparent, transparent calc(22% - 1px), rgba(255,255,255,0.12) 22%, transparent calc(22% + 1px))";
@@ -74,7 +75,7 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
   );
 
   const sizeFor = (id: string) =>
-    Math.round(MIN_SIZE + (voteCount(id) / maxVotes) * (MAX_SIZE - MIN_SIZE));
+    Math.round(MIN_SIZE + Math.pow(voteCount(id) / maxVotes, CURVE) * (MAX_SIZE - MIN_SIZE));
 
   const groups = useMemo(
     () => [...new Set(votedTeams.map((t) => t.group))].sort(),
@@ -177,7 +178,7 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
 
                         {/* Lane */}
                         <div
-                          className="flex-1 relative min-h-[140px] cursor-pointer"
+                          className="flex-1 relative min-h-[160px] cursor-pointer"
                           style={{ background: laneBg }}
                           onClick={() => onTeamClick(team.id)}
                         >
