@@ -30,8 +30,6 @@ const STATUS_COLOR: Record<string, string> = {
   CANCELLED: "bg-gray-200 text-gray-400",
 };
 
-const UPCOMING = new Set(["SCHEDULED", "TIMED"]);
-
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
@@ -46,7 +44,7 @@ export default function Fixtures({ onTeamClick }: Props) {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "upcoming" | "live" | "finished">("all");
+  const [filter, setFilter] = useState<"all" | "live" | "finished">("all");
 
   useEffect(() => {
     fetch("/api/fixtures")
@@ -59,11 +57,8 @@ export default function Fixtures({ onTeamClick }: Props) {
       .finally(() => setLoading(false));
   }, []);
 
-  const now = Date.now();
   const filtered = fixtures
     .filter((f) => {
-      const isFuture = new Date(f.utcDate).getTime() >= now;
-      if (filter === "upcoming") return UPCOMING.has(f.status) && isFuture;
       if (filter === "live") return f.status === "LIVE" || f.status === "IN_PLAY" || f.status === "PAUSED";
       if (filter === "finished") return f.status === "FINISHED";
       return true;
@@ -94,7 +89,7 @@ export default function Fixtures({ onTeamClick }: Props) {
   return (
     <div>
       <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-        {(["all", "live", "upcoming", "finished"] as const).map((f) => (
+        {(["all", "live", "finished"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -104,7 +99,7 @@ export default function Fixtures({ onTeamClick }: Props) {
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
-            {f === "all" ? "All" : f === "live" ? "🔴 Live" : f === "upcoming" ? "Upcoming" : "Finished"}
+            {f === "all" ? "All" : f === "live" ? "🔴 Live" : "Finished"}
           </button>
         ))}
       </div>
