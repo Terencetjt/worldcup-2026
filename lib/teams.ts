@@ -52,7 +52,7 @@ export const TEAMS: Team[] = [
   { id: "PAR", name: "Paraguay", flag: "🇵🇾", group: "J", stage: "group", eliminated: false },
   { id: "THA", name: "Thailand", flag: "🇹🇭", group: "J", stage: "group", eliminated: false },
   // Group K
-  { id: "POR2", name: "Portugal (K)", flag: "🇵🇹", group: "K", stage: "group", eliminated: false },
+  { id: "NOR", name: "Norway", flag: "🇳🇴", group: "K", stage: "group", eliminated: false },
   { id: "DEN", name: "Denmark", flag: "🇩🇰", group: "K", stage: "group", eliminated: false },
   { id: "SRB", name: "Serbia", flag: "🇷🇸", group: "K", stage: "group", eliminated: false },
   { id: "GHA", name: "Ghana", flag: "🇬🇭", group: "K", stage: "group", eliminated: false },
@@ -98,7 +98,7 @@ export const STAR_PLAYERS: Record<string, string> = {
   IRQ: "Aymen Hussein", NGA: "Victor Osimhen", ITA: "Federico Chiesa",
   CRO: "Luka Modrić", VEN: "Salomón Rondón", SUI: "Granit Xhaka",
   BEL: "Kevin De Bruyne", IRN: "Mehdi Taremi", PAR: "Miguel Almirón",
-  THA: "Chanathip Songkrasin", POR2: "Bruno Fernandes", DEN: "Christian Eriksen",
+  THA: "Chanathip Songkrasin", NOR: "Erling Haaland", DEN: "Christian Eriksen",
   SRB: "Dušan Vlahović", GHA: "Mohammed Kudus", TUR: "Hakan Çalhanoğlu",
   AUT: "David Alaba", UKR: "Mykhailo Mudryk", CIV: "Sébastien Haller",
 };
@@ -116,7 +116,7 @@ export const COUNTRY_ISO: Record<string, string> = {
   COL: "co", MKD: "mk", ENG: "gb-eng", NED: "nl", TUN: "tn", CHN: "cn",
   GER: "de", POR: "pt", CRC: "cr", AUS: "au", URU: "uy", KOR: "kr",
   IRQ: "iq", NGA: "ng", ITA: "it", CRO: "hr", VEN: "ve", SUI: "ch",
-  BEL: "be", IRN: "ir", PAR: "py", THA: "th", POR2: "pt", DEN: "dk",
+  BEL: "be", IRN: "ir", PAR: "py", THA: "th", NOR: "no", DEN: "dk",
   SRB: "rs", GHA: "gh", TUR: "tr", AUT: "at", UKR: "ua", CIV: "ci",
 };
 
