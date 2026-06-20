@@ -12,7 +12,9 @@ const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
 function group(map: Record<string, string>): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   for (const [name, teamId] of Object.entries(map)) {
-    (out[teamId] ??= []).push(name);
+    // Skip entries with a blank/whitespace name or no team attached.
+    if (!name?.trim() || !teamId?.trim()) continue;
+    (out[teamId] ??= []).push(name.trim());
   }
   return out;
 }
