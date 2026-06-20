@@ -1,97 +1,153 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Fixture } from "@/lib/types";
+import { TEAMS } from "@/lib/teams";
 
-const KNOCKOUT_STAGES: Record<string, string> = {
-  LAST_32: "Round of 32",
-  LAST_16: "Round of 16",
-  QUARTER_FINALS: "Quarter-Final",
-  QUARTER_FINAL: "Quarter-Final",
-  SEMI_FINALS: "Semi-Final",
-  SEMI_FINAL: "Semi-Final",
-  THIRD_PLACE: "Third-Place Playoff",
-  PLAYOFF_FOR_THIRD_PLACE: "Third-Place Playoff",
-  FINAL: "Final",
-};
+const KNOCKOUT_STAGES = new Set([
+  "LAST_32", "LAST_16", "QUARTER_FINALS", "QUARTER_FINAL",
+  "SEMI_FINALS", "SEMI_FINAL", "FINAL", "THIRD_PLACE",
+  "PLAYOFF_FOR_THIRD_PLACE",
+]);
+
+interface RecentSupporter {
+  name: string;
+  teamId: string;
+  ts: number;
+}
+
+type Result = "won" | "lost" | "out" | "champion" | null;
 
 interface Headline {
-  id: number;
+  key: string;
   text: string;
-  stage: string;
-  date: string;
+  tone: "join" | "win" | "out";
+  ts: number;
 }
 
-function shortName(t: { shortName: string; name: string }) {
-  return t.shortName || t.name;
+function teamMeta(teamId: string) {
+  const t = TEAMS.find((x) => x.id === teamId);
+  return { name: t?.name ?? teamId, flag: t?.flag ?? "" };
 }
 
-function buildHeadline(m: Fixture): Headline | null {
-  const stage = KNOCKOUT_STAGES[m.stage];
-  if (!stage || m.status !== "FINISHED") return null;
+// Latest finished result for a team, identified by its tla/id in the fixtures.
+function latestResult(teamId: string, fixtures: Fixture[]): Result {
+  const played = fixtures
+    .filter(
+      (m) =>
+        m.status === "FINISHED" &&
+        (m.homeTeam.tla === teamId || m.awayTeam.tla === teamId)
+    )
+    .sort((a, b) => new Date(b.utcDate).getTime() - new Date(a.utcDate).getTime());
 
-  const home = shortName(m.homeTeam);
-  const away = shortName(m.awayTeam);
-  const hf = m.score.fullTime.home ?? 0;
-  const af = m.score.fullTime.away ?? 0;
+  const m = played[0];
+  if (!m) return null;
 
-  // Decide the winner; fall back to comparing goals if no explicit winner.
-  let winner: string, loser: string, wg: number, lg: number;
-  if (m.score.winner === "HOME_TEAM" || (!m.score.winner && hf > af)) {
-    winner = home; loser = away; wg = hf; lg = af;
-  } else if (m.score.winner === "AWAY_TEAM" || (!m.score.winner && af > hf)) {
-    winner = away; loser = home; wg = af; lg = hf;
-  } else {
-    return null; // genuine draw with no decider — can't call a knockout
+  const isHome = m.homeTeam.tla === teamId;
+  const won =
+    m.score.winner === (isHome ? "HOME_TEAM" : "AWAY_TEAM");
+  const lost =
+    m.score.winner === (isHome ? "AWAY_TEAM" : "HOME_TEAM");
+  const knockout = KNOCKOUT_STAGES.has(m.stage);
+
+  if (won && m.stage === "FINAL") return "champion";
+  if (won) return "won";
+  if (lost && knockout) return "out";
+  if (lost) return "lost";
+  return null;
+}
+
+function buildHeadline(s: RecentSupporter, fixtures: Fixture[]): Headline {
+  const { name, flag } = teamMeta(s.teamId);
+  const team = `${flag} ${name}`.trim();
+  const result = latestResult(s.teamId, fixtures);
+
+  const pick = (arr: string[]) => arr[hash(s.name + s.teamId) % arr.length];
+
+  if (result === "champion") {
+    return {
+      key: s.name, ts: s.ts, tone: "win",
+      text: pick([
+        `🏆 ${s.name} called it! ${team} are WORLD CHAMPIONS!`,
+        `🏆 Dreams come true for ${s.name} — ${team} lift the trophy!`,
+      ]),
+    };
   }
-
-  const score = `${wg}-${lg}`;
-  const pens =
-    hf === af && m.score.penalties
-      ? ` (${m.score.penalties.home}-${m.score.penalties.away} on pens)`
-      : "";
-
-  let text: string;
-  if (m.stage === "FINAL") {
-    text = `🏆 CHAMPIONS! ${winner} beat ${loser} ${score}${pens} to lift the World Cup!`;
-  } else {
-    const templates = [
-      `🎙️ FULL TIME! ${winner} KNOCK OUT ${loser} ${score}${pens} — ${loser} are heading home! 🧳`,
-      `🚨 ${winner} END ${loser}'s dream! A ${score}${pens} ${stage} win sends them crashing out! 💔`,
-      `🎙️ It's all over for ${loser}! ${winner} march on after a ${score}${pens} ${stage} triumph. ✈️`,
-      `🚨 HEARTBREAK! ${winner} dump ${loser} out of the ${stage} with a ${score}${pens} win!`,
-      `🎙️ ${winner} ${score} ${loser}${pens} — ${winner} book their place, ${loser} are OUT!`,
-    ];
-    text = templates[m.id % templates.length];
+  if (result === "won") {
+    return {
+      key: s.name, ts: s.ts, tone: "win",
+      text: pick([
+        `🎉 ${s.name}'s ${team} are flying — they WON their latest match!`,
+        `🔥 Great call ${s.name}! ${team} march on with a win!`,
+        `🎉 ${s.name} is celebrating — ${team} get the job done!`,
+      ]),
+    };
   }
-
+  if (result === "out") {
+    return {
+      key: s.name, ts: s.ts, tone: "out",
+      text: pick([
+        `💔 Heartbreak for ${s.name} — ${team} have been KNOCKED OUT!`,
+        `💔 ${s.name}'s World Cup ends here: ${team} are eliminated!`,
+        `😞 Tough day for ${s.name} — ${team} crash out of the tournament!`,
+      ]),
+    };
+  }
+  if (result === "lost") {
+    return {
+      key: s.name, ts: s.ts, tone: "out",
+      text: pick([
+        `😬 ${s.name}'s ${team} slipped up — a defeat in their latest match.`,
+        `😬 Not ideal for ${s.name}: ${team} lost their last game, but they fight on.`,
+      ]),
+    };
+  }
   return {
-    id: m.id,
-    text,
-    stage,
-    date: new Date(m.utcDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+    key: s.name, ts: s.ts, tone: "join",
+    text: pick([
+      `🎙️ ${s.name} has joined the action, backing ${team}!`,
+      `🙌 Welcome ${s.name} — throwing their weight behind ${team}!`,
+      `🎙️ ${s.name} is all in for ${team}. Let's see how they fare!`,
+    ]),
   };
 }
 
+// Stable small hash so a given supporter always gets the same template.
+function hash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+const TONE_COLOR: Record<Headline["tone"], string> = {
+  join: "text-emerald-300",
+  win: "text-yellow-300",
+  out: "text-red-300",
+};
+
 export default function Headlines() {
+  const [recent, setRecent] = useState<RecentSupporter[]>([]);
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const load = () =>
-      fetch("/api/fixtures", { cache: "no-store" })
-        .then((r) => r.json())
-        .then((d) => setFixtures(d.matches ?? []))
+    const load = () => {
+      Promise.all([
+        fetch("/api/supporters", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/fixtures", { cache: "no-store" }).then((r) => r.json()),
+      ])
+        .then(([sup, fix]) => {
+          setRecent(sup.recent ?? []);
+          setFixtures(fix.matches ?? []);
+        })
         .catch(() => {})
         .finally(() => setLoaded(true));
+    };
     load();
-    const id = setInterval(load, 15000);
+    const id = setInterval(load, 10000);
     return () => clearInterval(id);
   }, []);
 
-  const headlines = fixtures
-    .map(buildHeadline)
-    .filter((h): h is Headline => h !== null)
-    .sort((a, b) => b.id - a.id);
+  const headlines = recent.map((s) => buildHeadline(s, fixtures)).slice(0, 20);
 
   if (!loaded) return null;
 
@@ -100,7 +156,7 @@ export default function Headlines() {
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
         <span className="text-lg">🎙️</span>
         <span className="font-black text-white text-sm uppercase tracking-wider">
-          Knockout Headlines
+          From the Stands
         </span>
         <span className="flex items-center gap-1 ml-auto text-[10px] font-bold text-white bg-red-500 rounded-full px-2 py-0.5">
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> LIVE
@@ -109,20 +165,16 @@ export default function Headlines() {
 
       {headlines.length === 0 ? (
         <p className="px-4 py-4 text-sm text-emerald-100/90">
-          Group stage is heating up — the first knockouts will be called right here.
-          Eliminations get announced the moment they happen. Stay tuned! ⚽
+          No fans yet — pick your team and you&apos;ll be the first headline!
+          We&apos;ll call out every fan who joins, and when their team wins or crashes out. ⚽
         </p>
       ) : (
         <div className="divide-y divide-white/5 max-h-64 overflow-y-auto">
           {headlines.map((h) => (
-            <div key={h.id} className="flex items-start gap-3 px-4 py-3">
-              <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider whitespace-nowrap mt-0.5 w-20 shrink-0">
-                {h.stage}
-              </span>
-              <p className="text-sm text-white font-medium leading-snug flex-1">{h.text}</p>
-              <span className="text-[10px] text-emerald-200/70 whitespace-nowrap mt-0.5">
-                {h.date}
-              </span>
+            <div key={h.key} className="flex items-center gap-3 px-4 py-3">
+              <p className={`text-sm font-medium leading-snug flex-1 ${TONE_COLOR[h.tone]}`}>
+                {h.text}
+              </p>
             </div>
           ))}
         </div>
