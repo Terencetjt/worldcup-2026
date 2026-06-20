@@ -5,6 +5,7 @@ import RaceTrack from "@/components/RaceTrack";
 import TeamSelector from "@/components/TeamSelector";
 import VotePanel from "@/components/VotePanel";
 import TeamDetail from "@/components/TeamDetail";
+import Headlines from "@/components/Headlines";
 import { TEAMS } from "@/lib/teams";
 import { VoteData } from "@/lib/types";
 
@@ -122,6 +123,9 @@ export default function Home() {
       )}
 
       <main className="max-w-6xl mx-auto px-4 py-6">
+        {/* Commentator headlines for knockout eliminations */}
+        <Headlines />
+
         {/* Tabs */}
         <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm border border-gray-100 mb-6 w-fit">
           {(["fixtures", "race"] as Tab[]).map((t) => (

@@ -54,8 +54,11 @@ export interface Fixture {
   homeTeam: { name: string; shortName: string; tla: string; crest: string };
   awayTeam: { name: string; shortName: string; tla: string; crest: string };
   score: {
+    winner: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
+    duration?: string;
     fullTime: { home: number | null; away: number | null };
     halfTime: { home: number | null; away: number | null };
+    penalties?: { home: number | null; away: number | null };
   };
 }
 
