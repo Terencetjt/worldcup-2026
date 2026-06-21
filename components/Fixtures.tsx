@@ -207,12 +207,40 @@ export default function Fixtures({ onTeamClick }: Props) {
                       awayName={m.awayTeam.shortName || m.awayTeam.name}
                     />
                   )}
+
+                  {m.status === "FINISHED" && myPredictions[String(m.id)] && (
+                    <PredictionResult pred={myPredictions[String(m.id)]} match={m} />
+                  )}
                 </div>
               ))}
             </div>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function PredictionResult({ pred, match }: { pred: string; match: Fixture }) {
+  const [ph, pa] = pred.split("-").map(Number);
+  const aH = match.score.fullTime.home ?? 0;
+  const aA = match.score.fullTime.away ?? 0;
+  const out = (h: number, a: number) => (h > a ? "H" : h < a ? "A" : "D");
+  const exact = ph === aH && pa === aA;
+  const winner = out(ph, pa) === out(aH, aA);
+  const points = exact ? 10 : winner ? 5 : 0;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-center gap-2 text-xs">
+      <span className="text-gray-400">Your pick</span>
+      <span className="font-bold text-gray-700">{ph}–{pa}</span>
+      <span
+        className={`font-bold px-2 py-0.5 rounded-full ${
+          points > 0 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"
+        }`}
+      >
+        {points > 0 ? `+${points} ${exact ? "exact!" : "winner"}` : "no points"}
+      </span>
     </div>
   );
 }

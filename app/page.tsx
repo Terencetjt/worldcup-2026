@@ -21,6 +21,7 @@ export default function Home() {
   const [fanName, setFanName] = useState("");
   const [pendingTeam, setPendingTeam] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState("");
+  const [myPoints, setMyPoints] = useState<number | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("wc2026_support");
@@ -32,6 +33,23 @@ export default function Home() {
       .then((d) => setVoteData(d))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!fanName) return;
+    const load = () =>
+      fetch("/api/leaderboard", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => {
+          const row = (d.leaderboard ?? []).find(
+            (r: { name: string }) => r.name === fanName
+          );
+          setMyPoints(row ? row.points : 0);
+        })
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 15000);
+    return () => clearInterval(id);
+  }, [fanName]);
 
   function selectTeam(id: string) {
     setShowSelector(false);
@@ -84,6 +102,15 @@ export default function Home() {
               <span className="hidden sm:inline text-sm text-gray-500">
                 Hi, <span className="font-semibold text-gray-700">{fanName}</span>
               </span>
+            )}
+            {myPoints !== null && (
+              <button
+                onClick={() => setTab("leaderboard")}
+                className="flex items-center gap-1 px-2.5 py-2 rounded-xl text-sm font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all"
+                title="Your prediction points"
+              >
+                🏆 {myPoints} pts
+              </button>
             )}
             <button
               onClick={() => setShowSelector(!showSelector)}
