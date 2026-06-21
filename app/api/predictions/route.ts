@@ -43,6 +43,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Match is closed for predictions" }, { status: 400 });
     }
 
+    // You can only predict matches your backed team plays in (you vs the rival).
+    const myTeam = (await redis.hget("wc2026:supporters", clean)) as string | null;
+    if (!myTeam || (match.homeTeam.tla !== myTeam && match.awayTeam.tla !== myTeam)) {
+      return NextResponse.json(
+        { error: "You can only predict your team's matches" },
+        { status: 403 }
+      );
+    }
+
     await redis.hset(KEY, `${clean}|${matchId}`, `${h}-${a}`);
     return NextResponse.json({ ok: true });
   } catch {
