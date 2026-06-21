@@ -1,15 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Fixture } from "@/lib/types";
-import PredictionRow from "./PredictionRow";
 
 interface Props {
   onTeamClick: (tla: string) => void;
-}
-
-function isPredictable(m: Fixture): boolean {
-  return (m.status === "SCHEDULED" || m.status === "TIMED") &&
-    new Date(m.utcDate).getTime() > Date.now();
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -53,8 +47,6 @@ export default function Fixtures({ onTeamClick }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "upcoming" | "live" | "finished">("all");
-  const [fanName, setFanName] = useState<string | null>(null);
-  const [myTeam, setMyTeam] = useState<string | null>(null);
   const [myPredictions, setMyPredictions] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -68,8 +60,6 @@ export default function Fixtures({ onTeamClick }: Props) {
       .finally(() => setLoading(false));
 
     const name = localStorage.getItem("wc2026_name");
-    setFanName(name);
-    setMyTeam(localStorage.getItem("wc2026_support"));
     if (name) {
       fetch(`/api/predictions?name=${encodeURIComponent(name)}`)
         .then((r) => r.json())
@@ -199,18 +189,6 @@ export default function Fixtures({ onTeamClick }: Props) {
                       </span>
                     </button>
                   </div>
-
-                  {isPredictable(m) &&
-                    myTeam != null &&
-                    (m.homeTeam.tla === myTeam || m.awayTeam.tla === myTeam) && (
-                      <PredictionRow
-                        matchId={m.id}
-                        fanName={fanName}
-                        initial={myPredictions[String(m.id)]}
-                        homeName={m.homeTeam.shortName || m.homeTeam.name}
-                        awayName={m.awayTeam.shortName || m.awayTeam.name}
-                      />
-                    )}
 
                   {m.status === "FINISHED" && myPredictions[String(m.id)] && (
                     <PredictionResult pred={myPredictions[String(m.id)]} match={m} />

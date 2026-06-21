@@ -10,14 +10,39 @@ const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
 
 export async function GET() {
   try {
-    if (!redis) return NextResponse.json({ leaderboard: [] }, { headers: NO_STORE });
+    if (!redis) return NextResponse.json({ leaderboard: [], picks: [] }, { headers: NO_STORE });
     const [predictions, supporters, matches] = await Promise.all([
       redis.hgetall("wc2026:predictions"),
       redis.hgetall("wc2026:supporters"),
       getMatches(),
     ]);
     const leaderboard = computeLeaderboard(predictions, supporters, matches);
-    return NextResponse.json({ leaderboard }, { headers: NO_STORE });
+
+    // Each player's picked scoreline, newest matches first, for the callout feed.
+    const byId = new Map(matches.map((m) => [String(m.id), m]));
+    const picks = Object.entries(predictions)
+      .map(([field, val]) => {
+        const sep = field.lastIndexOf("|");
+        if (sep < 0) return null;
+        const name = field.slice(0, sep).trim();
+        const m = byId.get(field.slice(sep + 1));
+        const [h, a] = val.split("-");
+        if (!name || !m) return null;
+        return {
+          name,
+          teamId: supporters[name] ?? null,
+          home: m.homeTeam.tla,
+          away: m.awayTeam.tla,
+          ph: Number(h),
+          pa: Number(a),
+          status: m.status,
+          ts: new Date(m.utcDate).getTime(),
+        };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+      .sort((a, b) => b.ts - a.ts);
+
+    return NextResponse.json({ leaderboard, picks }, { headers: NO_STORE });
   } catch {
     return NextResponse.json({ leaderboard: [] }, { headers: NO_STORE });
   }

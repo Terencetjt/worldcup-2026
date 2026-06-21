@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { TEAMS, getTeamColor } from "@/lib/teams";
 import { Fixture, STAGE_LABEL, VoteData } from "@/lib/types";
+import PredictionRow from "./PredictionRow";
 
 interface Props {
   teamId: string;
@@ -9,10 +10,18 @@ interface Props {
   voteData: VoteData;
 }
 
+function isPredictable(m: Fixture): boolean {
+  return (m.status === "SCHEDULED" || m.status === "TIMED") &&
+    new Date(m.utcDate).getTime() > Date.now();
+}
+
 export default function TeamDetail({ teamId, onClose, voteData }: Props) {
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loading, setLoading] = useState(true);
   const [fans, setFans] = useState<string[]>([]);
+  const [fanName, setFanName] = useState<string | null>(null);
+  const [myTeam, setMyTeam] = useState<string | null>(null);
+  const [myPredictions, setMyPredictions] = useState<Record<string, string>>({});
 
   const team = TEAMS.find((t) => t.id === teamId);
   const color = getTeamColor(teamId);
@@ -30,6 +39,16 @@ export default function TeamDetail({ teamId, onClose, voteData }: Props) {
       .then((r) => r.json())
       .then((d) => setFans(d.supporters?.[teamId] ?? []))
       .catch(() => {});
+
+    const name = localStorage.getItem("wc2026_name");
+    setFanName(name);
+    setMyTeam(localStorage.getItem("wc2026_support"));
+    if (name) {
+      fetch(`/api/predictions?name=${encodeURIComponent(name)}`)
+        .then((r) => r.json())
+        .then((d) => setMyPredictions(d.predictions ?? {}))
+        .catch(() => {});
+    }
   }, [teamId]);
 
   if (!team) return null;
@@ -193,6 +212,25 @@ export default function TeamDetail({ teamId, onClose, voteData }: Props) {
                         )}
                       </div>
                     </div>
+
+                    {isPredictable(m) &&
+                      myTeam != null &&
+                      (m.homeTeam.tla === myTeam || m.awayTeam.tla === myTeam) && (
+                        <>
+                          <p className="text-[11px] text-gray-400 mt-2 text-center">
+                            {teamId === myTeam
+                              ? "Vote for your team — pick a winning scoreline 💪"
+                              : "Vote against this rival — back your team's scoreline 🔥"}
+                          </p>
+                          <PredictionRow
+                            matchId={m.id}
+                            fanName={fanName}
+                            initial={myPredictions[String(m.id)]}
+                            homeName={m.homeTeam.shortName || m.homeTeam.name}
+                            awayName={m.awayTeam.shortName || m.awayTeam.name}
+                          />
+                        </>
+                      )}
                   </div>
                 );
               })}
