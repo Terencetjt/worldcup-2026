@@ -6,10 +6,11 @@ import TeamSelector from "@/components/TeamSelector";
 import VotePanel from "@/components/VotePanel";
 import TeamDetail from "@/components/TeamDetail";
 import Headlines from "@/components/Headlines";
+import Leaderboard from "@/components/Leaderboard";
 import { TEAMS } from "@/lib/teams";
 import { VoteData } from "@/lib/types";
 
-type Tab = "fixtures" | "race";
+type Tab = "fixtures" | "race" | "leaderboard";
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("fixtures");
@@ -128,7 +129,7 @@ export default function Home() {
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm border border-gray-100 mb-6 w-fit">
-          {(["fixtures", "race"] as Tab[]).map((t) => (
+          {(["fixtures", "race", "leaderboard"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -138,7 +139,7 @@ export default function Home() {
                   : "text-gray-600 hover:text-gray-800"
               }`}
             >
-              {t === "fixtures" ? "📅 Fixtures" : "🏁 Race to the Final"}
+              {t === "fixtures" ? "📅 Fixtures" : t === "race" ? "🏁 Race to the Final" : "🏆 Leaderboard"}
             </button>
           ))}
         </div>
@@ -162,6 +163,12 @@ export default function Home() {
             <div className="space-y-4">
               <VotePanel onTeamClick={setSelectedTeam} />
             </div>
+          </div>
+        )}
+
+        {tab === "leaderboard" && (
+          <div className="max-w-2xl">
+            <Leaderboard />
           </div>
         )}
       </main>
