@@ -13,6 +13,7 @@ interface Row {
 interface Pick {
   name: string;
   teamId: string | null;
+  subject: string | null;
   home: string;
   away: string;
   ph: number;
@@ -110,15 +111,17 @@ export default function Leaderboard() {
         ) : (
           <div className="space-y-1.5 max-h-72 overflow-y-auto">
             {picks.map((p, i) => {
-              const backsHome = p.teamId === p.home;
-              const myGoals = backsHome ? p.ph : p.pa;
-              const oppGoals = backsHome ? p.pa : p.ph;
+              const subj = p.subject;
+              const subjHome = subj === p.home;
+              const subjGoals = subjHome ? p.ph : p.pa;
+              const oppGoals = subjHome ? p.pa : p.ph;
+              const subjFlag = subj ? flagByTla(subj) : "";
               const stance =
-                p.teamId && (p.teamId === p.home || p.teamId === p.away)
-                  ? myGoals > oppGoals
-                    ? { label: "FOR", cls: "bg-green-100 text-green-700" }
-                    : myGoals < oppGoals
-                    ? { label: "AGAINST", cls: "bg-red-100 text-red-600" }
+                subj && (subj === p.home || subj === p.away)
+                  ? subjGoals > oppGoals
+                    ? { label: `FOR ${subjFlag}`, cls: "bg-green-100 text-green-700" }
+                    : subjGoals < oppGoals
+                    ? { label: `AGAINST ${subjFlag}`, cls: "bg-red-100 text-red-600" }
                     : { label: "DRAW", cls: "bg-gray-100 text-gray-500" }
                   : null;
               return (

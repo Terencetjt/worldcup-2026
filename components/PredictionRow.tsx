@@ -4,12 +4,13 @@ import { useState } from "react";
 interface Props {
   matchId: number;
   fanName: string | null;
+  subjectTeam: string; // the fan-backed team this vote is about
   initial?: string; // "h-a"
   homeName: string;
   awayName: string;
 }
 
-export default function PredictionRow({ matchId, fanName, initial, homeName, awayName }: Props) {
+export default function PredictionRow({ matchId, fanName, subjectTeam, initial, homeName, awayName }: Props) {
   const [h, setH] = useState(initial ? initial.split("-")[0] : "");
   const [a, setA] = useState(initial ? initial.split("-")[1] : "");
   const [saved, setSaved] = useState(Boolean(initial));
@@ -36,7 +37,7 @@ export default function PredictionRow({ matchId, fanName, initial, homeName, awa
     const res = await fetch("/api/predictions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: fanName, matchId, home: hn, away: an }),
+      body: JSON.stringify({ name: fanName, matchId, home: hn, away: an, teamId: subjectTeam }),
     });
     if (res.ok) {
       setSaved(true);

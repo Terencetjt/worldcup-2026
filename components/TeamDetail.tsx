@@ -213,24 +213,23 @@ export default function TeamDetail({ teamId, onClose, voteData }: Props) {
                       </div>
                     </div>
 
-                    {isPredictable(m) &&
-                      myTeam != null &&
-                      (m.homeTeam.tla === myTeam || m.awayTeam.tla === myTeam) && (
-                        <>
-                          <p className="text-[11px] text-gray-400 mt-2 text-center">
-                            {teamId === myTeam
-                              ? "Vote for your team — pick a winning scoreline 💪"
-                              : "Vote against this rival — back your team's scoreline 🔥"}
-                          </p>
-                          <PredictionRow
-                            matchId={m.id}
-                            fanName={fanName}
-                            initial={myPredictions[String(m.id)]}
-                            homeName={m.homeTeam.shortName || m.homeTeam.name}
-                            awayName={m.awayTeam.shortName || m.awayTeam.name}
-                          />
-                        </>
-                      )}
+                    {isPredictable(m) && fans.length > 0 && (
+                      <>
+                        <p className="text-[11px] text-gray-400 mt-2 text-center">
+                          {teamId === myTeam
+                            ? "Back your team — pick a winning scoreline 💪"
+                            : `Pick the score for ${team.name} — vote for or against them 🔥`}
+                        </p>
+                        <PredictionRow
+                          matchId={m.id}
+                          fanName={fanName}
+                          subjectTeam={teamId}
+                          initial={myPredictions[String(m.id)]}
+                          homeName={m.homeTeam.shortName || m.homeTeam.name}
+                          awayName={m.awayTeam.shortName || m.awayTeam.name}
+                        />
+                      </>
+                    )}
                   </div>
                 );
               })}
