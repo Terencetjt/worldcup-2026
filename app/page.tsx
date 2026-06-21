@@ -47,7 +47,7 @@ export default function Home() {
         })
         .catch(() => {});
     load();
-    const id = setInterval(load, 15000);
+    const id = setInterval(load, 5000);
     return () => clearInterval(id);
   }, [fanName]);
 

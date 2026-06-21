@@ -31,7 +31,7 @@ export default function Leaderboard() {
         .catch(() => {})
         .finally(() => setLoaded(true));
     load();
-    const id = setInterval(load, 10000);
+    const id = setInterval(load, 4000);
     return () => clearInterval(id);
   }, []);
 

@@ -57,7 +57,7 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
     };
     load();
     // Keep the track in sync with everyone else's votes.
-    const id = setInterval(load, 8000);
+    const id = setInterval(load, 3000);
     return () => clearInterval(id);
   }, []);
 

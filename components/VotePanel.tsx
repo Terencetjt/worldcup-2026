@@ -18,7 +18,7 @@ export default function VotePanel({ onTeamClick }: Props) {
     if (saved) setMyVote(saved);
     fetchVotes();
     // Poll so everyone sees each other's votes live, without refreshing.
-    const id = setInterval(fetchVotes, 8000);
+    const id = setInterval(fetchVotes, 3000);
     return () => clearInterval(id);
   }, []);
 
