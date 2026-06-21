@@ -63,47 +63,19 @@ export function computeLeaderboard(
     if (aH == null || aA == null) continue;
 
     const actual = outcome(aH, aA);
-    const preds = byMatch[String(m.id)] ?? [];
-    const home = m.homeTeam.tla;
-    const away = m.awayTeam.tla;
-
-    // Base points earned by each predictor.
-    for (const p of preds) {
+    for (const p of byMatch[String(m.id)] ?? []) {
       const row = ensure(p.name);
       if (p.home === aH && p.away === aA) {
-        row.points += 10;
+        row.points += 10; // exact score
         row.exact += 1;
       } else if (outcome(p.home, p.away) === actual) {
-        row.points += 5;
+        row.points += 5; // correct winner, wrong score
         row.correct += 1;
-      }
-    }
-
-    // Rivalry deductions: when your favourite team did NOT win and a rival
-    // (supporter of the opposing team) correctly predicted that result.
-    const sides: [string, string, "H" | "A"][] = [
-      [home, away, "H"],
-      [away, home, "A"],
-    ];
-    for (const [favTeam, rivalTeam, favWin] of sides) {
-      if (actual === favWin) continue; // fav won — rivals were wrong
-
-      let penalty = 0;
-      for (const p of preds) {
-        if (supporters[p.name] !== rivalTeam) continue; // only rival supporters
-        if (outcome(p.home, p.away) !== actual) continue; // rival must be right
-        penalty = Math.max(penalty, p.home === aH && p.away === aA ? 5 : 3);
-      }
-      if (penalty === 0) continue;
-
-      // Deduct from every supporter of the beaten favourite team.
-      for (const [name, team] of Object.entries(supporters)) {
-        if (team === favTeam && name.trim()) ensure(name.trim()).points -= penalty;
       }
     }
   }
 
-  return [...rows.values()]
-    .map((r) => ({ ...r, points: Math.max(0, r.points) })) // floor at 0
-    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+  return [...rows.values()].sort(
+    (a, b) => b.points - a.points || a.name.localeCompare(b.name)
+  );
 }

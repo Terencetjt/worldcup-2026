@@ -20,50 +20,8 @@ type Result = "won" | "lost" | "out" | "champion" | null;
 interface Headline {
   key: string;
   text: string;
-  tone: "join" | "win" | "out" | "rivalry";
+  tone: "join" | "win" | "out";
   ts: number;
-}
-
-function rep(names: string[]): string {
-  if (names.length === 0) return "";
-  return names.length === 1 ? names[0] : `${names[0]} & ${names.length - 1} more`;
-}
-
-// Head-to-head rivalry callouts for matches where both teams have fans.
-function buildRivalries(matches: Fixture[], byTeam: Record<string, string[]>): Headline[] {
-  const out: Headline[] = [];
-  for (const m of matches) {
-    const hFans = byTeam[m.homeTeam.tla] ?? [];
-    const aFans = byTeam[m.awayTeam.tla] ?? [];
-    if (hFans.length === 0 || aFans.length === 0) continue;
-
-    const h = teamMeta(m.homeTeam.tla);
-    const a = teamMeta(m.awayTeam.tla);
-    const hTeam = `${h.flag} ${h.name}`.trim();
-    const aTeam = `${a.flag} ${a.name}`.trim();
-    const hRep = rep(hFans);
-    const aRep = rep(aFans);
-    const ts = new Date(m.utcDate).getTime();
-
-    if (m.status === "FINISHED") {
-      const hg = m.score.fullTime.home ?? 0;
-      const ag = m.score.fullTime.away ?? 0;
-      const score = `${hg}-${ag}`;
-      let text: string;
-      if (hg > ag) text = `🔥 ${hRep} earns bragging rights — ${hTeam} beat ${aRep}'s ${aTeam} ${score}!`;
-      else if (ag > hg) text = `🔥 ${aRep} earns bragging rights — ${aTeam} beat ${hRep}'s ${hTeam} ${score}!`;
-      else text = `🤝 Honours even! ${hRep}'s ${hTeam} and ${aRep}'s ${aTeam} draw ${score}.`;
-      out.push({ key: `riv-${m.id}`, text, tone: "rivalry", ts });
-    } else {
-      out.push({
-        key: `riv-${m.id}`,
-        tone: "rivalry",
-        ts,
-        text: `🔥 RIVALRY! ${hRep}'s ${hTeam} take on ${aRep}'s ${aTeam} — bragging rights on the line!`,
-      });
-    }
-  }
-  return out.sort((a, b) => b.ts - a.ts);
 }
 
 function teamMeta(teamId: string) {
@@ -164,12 +122,10 @@ const TONE_COLOR: Record<Headline["tone"], string> = {
   join: "text-emerald-300",
   win: "text-yellow-300",
   out: "text-red-300",
-  rivalry: "text-orange-300",
 };
 
 export default function Headlines() {
   const [recent, setRecent] = useState<RecentSupporter[]>([]);
-  const [byTeam, setByTeam] = useState<Record<string, string[]>>({});
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -181,7 +137,6 @@ export default function Headlines() {
       ])
         .then(([sup, fix]) => {
           setRecent(sup.recent ?? []);
-          setByTeam(sup.supporters ?? {});
           setFixtures(fix.matches ?? []);
         })
         .catch(() => {})
@@ -192,9 +147,7 @@ export default function Headlines() {
     return () => clearInterval(id);
   }, []);
 
-  const fanHeadlines = recent.map((s) => buildHeadline(s, fixtures));
-  const rivalries = buildRivalries(fixtures, byTeam);
-  const headlines = [...rivalries, ...fanHeadlines].slice(0, 25);
+  const headlines = recent.map((s) => buildHeadline(s, fixtures)).slice(0, 25);
 
   if (!loaded) return null;
 
