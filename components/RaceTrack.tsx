@@ -1,12 +1,65 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { TEAMS, getTeamColor, getStarPlayer } from "@/lib/teams";
-import { TournamentStage } from "@/lib/types";
+import { Fixture, STAGE_POSITION, TournamentStage } from "@/lib/types";
 import PlayerRacer from "./PlayerRacer";
 
 interface Props {
   onTeamClick: (id: string) => void;
   supportedTeam: string | null;
+}
+
+// football-data stage names → our track stages.
+const STAGE_MAP: Record<string, TournamentStage> = {
+  GROUP_STAGE: "group",
+  LAST_32: "round_of_32",
+  LAST_16: "round_of_16",
+  QUARTER_FINALS: "quarter_final",
+  QUARTER_FINAL: "quarter_final",
+  SEMI_FINALS: "semi_final",
+  SEMI_FINAL: "semi_final",
+  THIRD_PLACE: "semi_final",
+  PLAYOFF_FOR_THIRD_PLACE: "semi_final",
+  FINAL: "final",
+};
+
+interface Progress {
+  stage: TournamentStage;
+  eliminated: boolean;
+}
+
+// Derive each team's furthest stage (and elimination) from real fixtures.
+function computeProgress(fixtures: Fixture[]): Record<string, Progress> {
+  const best: Record<string, { rank: number; stage: TournamentStage; m: Fixture; isHome: boolean }> = {};
+  for (const m of fixtures) {
+    const stage = STAGE_MAP[m.stage];
+    if (!stage) continue;
+    const rank = STAGE_POSITION[stage];
+    for (const isHome of [true, false]) {
+      const tla = isHome ? m.homeTeam.tla : m.awayTeam.tla;
+      if (!tla) continue;
+      if (!best[tla] || rank >= best[tla].rank) best[tla] = { rank, stage, m, isHome };
+    }
+  }
+
+  const out: Record<string, Progress> = {};
+  for (const tla of Object.keys(best)) {
+    const { stage, m, isHome } = best[tla];
+    let finalStage: TournamentStage = stage;
+    let eliminated = false;
+    if (m.status === "FINISHED" && stage !== "group") {
+      const hg = m.score.fullTime.home ?? 0;
+      const ag = m.score.fullTime.away ?? 0;
+      const homeWon = m.score.winner === "HOME_TEAM" || (m.score.winner == null && hg > ag);
+      const awayWon = m.score.winner === "AWAY_TEAM" || (m.score.winner == null && ag > hg);
+      const won = isHome ? homeWon : awayWon;
+      const lost = isHome ? awayWon : homeWon;
+      if (stage === "final" && won) finalStage = "champion";
+      else if (lost) eliminated = true;
+    }
+    out[tla] = { stage: finalStage, eliminated };
+  }
+  return out;
 }
 
 const STAGES: { key: TournamentStage; label: string }[] = [
@@ -42,6 +95,7 @@ const laneBg =
 export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
   const [supporters, setSupporters] = useState<Record<string, string[]>>({});
   const [votes, setVotes] = useState<Record<string, number>>({});
+  const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -54,12 +108,18 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
         .then((r) => r.json())
         .then((d) => setVotes(d.votes ?? {}))
         .catch(() => {});
+      fetch("/api/fixtures", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => setFixtures(d.matches ?? []))
+        .catch(() => {});
     };
     load();
-    // Keep the track in sync with everyone else's votes.
+    // Keep the track in sync with everyone else's votes and live results.
     const id = setInterval(load, 3000);
     return () => clearInterval(id);
   }, []);
+
+  const progress = useMemo(() => computeProgress(fixtures), [fixtures]);
 
   const voteCount = (id: string) => Number(votes[id]) || 0;
 
@@ -137,7 +197,10 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
                     Group {g}
                   </div>
                   {teamsInGroup.map((team) => {
-                    const x = STAGE_X[team.stage];
+                    const prog = progress[team.id];
+                    const stage = prog?.stage ?? team.stage;
+                    const eliminated = prog?.eliminated ?? team.eliminated;
+                    const x = STAGE_X[stage];
                     const color = getTeamColor(team.id);
                     const isSupported = supportedTeam === team.id;
                     const fans = supporters[team.id] ?? [];
@@ -200,7 +263,7 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
                             style={{
                               left: 4,
                               width: `calc(${x}% - 4px)`,
-                              background: team.eliminated
+                              background: eliminated
                                 ? "rgba(120,120,120,0.5)"
                                 : `${color}aa`,
                             }}
@@ -230,7 +293,7 @@ export default function RaceTrack({ onTeamClick, supportedTeam }: Props) {
                               <PlayerRacer
                                 teamId={team.id}
                                 size={size}
-                                eliminated={team.eliminated}
+                                eliminated={eliminated}
                                 supported={isSupported}
                               />
                             </div>
